@@ -946,7 +946,38 @@
 			<metric property="Txns Per Logon" />
 			<metric property="Database Time Per Sec" />
 		</service>
+        
+        <service name="Oracle Schemas"
+			discovery="org.rhq.plugins.database.CustomTableRowDiscoveryComponent"
+			class="org.rhq.plugins.oracle.OracleSchemaComponent">
 
+		    <plugin-configuration>
+				<c:simple-property name="table" default="dba_tables" />
+				<c:simple-property name="metricQuery"
+					default="SELECT DISTINCT owner FROM dba_tables" />
+				<c:simple-property name="keyColumn" default="owner" />
+				<c:simple-property name="name" default="{key}" />
+				<c:simple-property name="description" default="Oracle Schemas" />
+			</plugin-configuration>
+			
+          <operation name="invokeSql" description="Execute arbitrary SQL">
+              <parameters>
+                  <c:simple-property name="sql"/>
+                  <c:simple-property name="type" default="query">
+                      <c:property-options>
+                          <c:option value="query" name="query"/>
+                          <c:option value="update" name="update"/>
+
+                      </c:property-options>
+                  </c:simple-property>
+              </parameters>
+              <results>
+                  <c:simple-property name="result"/>
+                  <c:simple-property name="contents"/>
+              </results>
+          </operation>
+        </service>
+        
 	</server>
 
 </plugin>
