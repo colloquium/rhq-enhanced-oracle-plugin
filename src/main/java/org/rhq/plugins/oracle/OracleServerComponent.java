@@ -21,6 +21,7 @@ package org.rhq.plugins.oracle;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -28,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.rhq.core.domain.configuration.Configuration;
 import org.rhq.core.domain.measurement.AvailabilityType;
+import org.rhq.core.domain.measurement.DataType;
 import org.rhq.core.domain.measurement.MeasurementDataNumeric;
 import org.rhq.core.domain.measurement.MeasurementReport;
 import org.rhq.core.domain.measurement.MeasurementScheduleRequest;
@@ -43,6 +45,12 @@ import org.rhq.plugins.database.DatabaseQueryUtility;
 public class OracleServerComponent implements DatabaseComponent, MeasurementFacet {
     private static final Log LOG = LogFactory.getLog(OracleServerComponent.class);
 
+    private static final String PROPERTY_SIZE_DB = "totalSize";
+
+    private static final String SQL_QUERY_METRIC = "SELECT name, value FROM V$SYSSTAT";
+    private static final String SQL_QUERY_TRAIT = "SELECT name, value FROM V$PARAMETER";
+    private static final String SQL_QUERY_SIZE_DB = "SELECT SUM(bytes) FROM SYS.DBA_DATA_FILES";
+    
     private Connection connection;
 
     private ResourceContext resourceContext;
@@ -69,15 +77,20 @@ public class OracleServerComponent implements DatabaseComponent, MeasurementFace
             return AvailabilityType.DOWN;
         }
     }
-
+    
     public void getValues(MeasurementReport report, Set<MeasurementScheduleRequest> metrics) throws Exception {
-        Map<String, Double> values = DatabaseQueryUtility.getNumericQueryValueMap(this,
-            "SELECT name, value FROM V$SYSSTAT");
+        Map<String, Double> values = DatabaseQueryUtility.getNumericQueryValueMap(this, SQL_QUERY_METRIC);
+        Map<String, Double> traits = DatabaseQueryUtility.getNumericQueryValueMap(this, SQL_QUERY_TRAIT);
+        
         for (MeasurementScheduleRequest request : metrics) {
             if (request.getName().equals("totalSize")) {
-                Double val = DatabaseQueryUtility.getSingleNumericQueryValue(this,
-                    "SELECT SUM(bytes) FROM SYS.DBA_DATA_FILES");
+                Double val = DatabaseQueryUtility.getSingleNumericQueryValue(this, SQL_QUERY_SIZE_DB);
                 report.addData(new MeasurementDataNumeric(request, val));
+            } else if (request.getDataType().equals(DataType.TRAIT)) {
+            	Double trait = traits.get(request.getName());
+            	if (trait != null) {
+            		report.addData(new MeasurementDataNumeric(request, trait));
+            	}
             } else {
                 Double value = values.get(request.getName());
                 if (value != null) {
@@ -132,4 +145,84 @@ public class OracleServerComponent implements DatabaseComponent, MeasurementFace
         return "jdbc:oracle:thin:@" + configuration.getSimpleValue("host", "localhost") + ":"
             + configuration.getSimpleValue("port", "1521") + ":" + configuration.getSimpleValue("sid", "XE");
     }
+    
+//    private Map<String, Double> queryMetrics() {
+//    	return DatabaseQueryUtility.getNumericQueryValueMap(this,SQL_QUERY_METRIC);
+//    }
+//    
+//    private Map<String, Double> queryTraits() {
+//        return DatabaseQueryUtility.getNumericQueryValueMap(this, SQL_QUERY_TRAIT);	
+//    }
+//    
+//    private Map<String, Double> querySize() {
+//        Map<String, Double> sizeValues = new HashMap<String, Double>();
+//        sizeValues.put(PROPERTY_SIZE_DB, DatabaseQueryUtility.getSingleNumericQueryValue(this,SQL_QUERY_SIZE_DB));
+//        return sizeValues;
+//    }
+//    
+//    private MeasurementReport populateMeasurementReport(MeasurementReport report, Set<MeasurementScheduleRequest> metrics, Map values) {
+//        for (MeasurementScheduleRequest request : metrics) {
+//        	Double value = (Double) values.get(request.getName());
+//        	if (value != null) {
+//        		report.addData(new MeasurementDataNumeric(request, value));
+//            }
+//        }
+//    	
+//    	return report;
+//    }
+//    
+//    public void getValues(MeasurementReport report, Set<MeasurementScheduleRequest> metrics) throws Exception {
+//    	report = populateMeasurementReport(report, metrics, queryMetrics());
+//    	report = populateMeasurementReport(report, metrics, queryTraits());
+//    	report = populateMeasurementReport(report, metrics, querySize());
+//    }
+//
+//
+//    
+//    public Connection getConnection() {
+//        if (this.connection == null) {
+//            try {
+//                this.connection = buildConnection(this.resourceContext.getPluginConfiguration());
+//            } catch (SQLException e) {
+//                LOG.info("Unable to create oracle connection", e);
+//            }
+//        }
+//
+//        return this.connection;
+//    }
+//
+//    
+//    public void removeConnection() {
+//        this.connection = null;
+//    }
+//
+//    public static Connection buildConnection(Configuration configuration) throws SQLException {
+//        String driverClass = configuration.getSimple("driverClass").getStringValue();
+//        try {
+//            Class.forName(driverClass);
+//        } catch (ClassNotFoundException e) {
+//            throw new InvalidPluginConfigurationException("Specified JDBC driver class (" + driverClass
+//                + ") not found.");
+//        }
+//
+//        String url = buildUrl(configuration);
+//        LOG.debug("Attempting JDBC connection to [" + url + "]");
+//
+//        String principal = configuration.getSimple("principal").getStringValue();
+//        String credentials = configuration.getSimple("credentials").getStringValue();
+//
+//        Properties props = new Properties();
+//        props.put("user", principal);
+//        props.put("password", credentials);
+//        if (principal.equalsIgnoreCase("SYS")) {
+//            props.put("internal_logon", "sysdba");
+//        }
+//
+//        return DriverManager.getConnection(url, props);
+//    }
+//
+//    private static String buildUrl(Configuration configuration) {
+//        return "jdbc:oracle:thin:@" + configuration.getSimpleValue("host", "localhost") + ":"
+//            + configuration.getSimpleValue("port", "1521") + ":" + configuration.getSimpleValue("sid", "XE");
+//    }
 }
