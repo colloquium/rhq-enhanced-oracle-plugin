@@ -1,0 +1,202 @@
+-----------------------------------
+| Monitor OPEN CURSORS By Session |
+-----------------------------------
+﻿To monitor open cursors, query v$sesstat where name='opened cursors current'. This will give the number of currently opened cursors, by session:
+
+--total cursors open, by session
+SELECT 
+    s.sid 
+    , s.username 
+    , s.serial#
+    , a.value 
+FROM 
+    v$sesstat a 
+    , v$statname b 
+    , v$session s
+WHERE 
+    a.statistic# = b.statistic# 
+AND 
+    s.sid=a.sid 
+AND
+    b.name = 'opened cursors current';
+
+Example result:
+===============
+   
+    ---------------------------------------------------  
+    | VALUE  |	USERNAME    |  SID   |    SERIAL#     |
+    ---------------------------------------------------
+    |   1    |  SYS         |   18   |      38        |
+    |  53    |  ANONYMOUS   |   20   |     966        |
+    |  10    |  ANONYMOUS   |   23   |       2        |        
+    |  11    |  ANONYMOUS   |   24   |       2        |        
+    |  14    |  ANONYMOUS   |   25   |       2        |
+    |   8    |  ANONYMOUS   |   27   |      46        |
+    |  13    |  ANONYMOUS   |   28   |       3        |
+    |   0    |  - 	    |   30   |       2        |
+    ---------------------------------------------------
+
+
+NOTES:
+===============
+Will make an operation off of the 'Oracle Advanced Statistics' inventory item.
+ 
+--------------------------------------------
+| Monitor OPEN CURSORS By User, By Machine |
+--------------------------------------------
+﻿If you're running several N-tiered applications with multiple webservers, you may find it useful to monitor open cursors by username and machine:
+
+--total cursors open, by username & machine
+SELECT 
+   s.username 
+   , s.machine
+   , sum(a.value) total_cur 
+   , avg(a.value) avg_cur
+   , max(a.value) max_cur 
+FROM 
+   v$sesstat a 
+   , v$statname b 
+   , v$session s 
+WHERE 
+   a.statistic# = b.statistic#  
+AND 
+   s.sid=a.sid 
+AND
+   b.name = 'opened cursors current' 
+GROUP BY 
+   s.username, 
+   s.machine
+ORDER BY 
+   1 desc;
+
+
+Example result:
+===============
+
+   -------------------------------------------------------------------------------------------------------------------
+   | USERNAME  |  MACHINE	               |  TOTAL_CUR  | AVG_CUR	                                  |  MAX_CUR |
+   -------------------------------------------------------------------------------------------------------------------
+   | -         |  Oracle	               |   33	     |  2.35714285714285714285714285714285714286  |  28      |
+   | SYS       |  factory.kainotomia.com       |    1	     |  1	                                  |   1      |
+   | ANONYMOUS |  - 	                       |  109	     | 18.1666666666666666666666666666666666667   |  53      |
+   -------------------------------------------------------------------------------------------------------------------
+
+NOTES:
+===============
+Will make an operation off of the 'Oracle Advanced Statistics' inventory item.
+
+
+-----------------------------------
+| Monitor OPEN CURSORS Limit      |
+-----------------------------------
+
+To see if you've set OPEN_CURSORS high enough, monitor v$sesstat for the maximum opened cursors current. If your sessions are running close to the limit, up the value of OPEN_CURSORS.
+
+SELECT 
+   max(a.value) as highest_open_cur 
+   , p.value as max_open_cur
+FROM 
+   v$sesstat a 
+   , v$statname b 
+   , v$parameter p
+WHERE 
+   a.statistic# = b.statistic# 
+AND 
+   b.name = 'opened cursors current' 
+AND
+   p.name= 'open_cursors'
+GROUP BY 
+   p.value;
+
+
+Example response:
+=================
+   -----------------------------------
+   | HIGHEST_OPEN_CUR  | MAX_OPEN_CUR |
+   ------------------------------------
+   |        1953       |      2500    |
+   ------------------------------------
+
+NOTES:
+-----------------------------
+  Covered by JON.  
+     Monitors 'current open cursors' count.
+     Added trait of MAX OPEN CURSORS
+
+
+--------------------------------------------------
+| Monitor Number of cached CURSORS Per Session     |
+--------------------------------------------------
+v$sesstat also provides a statistic to monitor the number of cursors each session has in its session cursor cache.
+
+--session cached cursors, by session
+SELECT
+   s.username 
+   , s.sid 
+   , s.serial# 
+   , a.value
+FROM 
+   v$sesstat a
+   , v$statname b 
+   , v$session s
+WHERE 
+   a.statistic# = b.statistic#  
+AND 
+   s.sid=a.sid
+AND 
+   b.name = 'session cursor cache count' ;
+
+Example response:
+=================
+  -------------------------------------------------
+  |  USERNAME	|  SID	|  SERIAL#	|  VALUE  |
+  -------------------------------------------------
+  | SYS         |   18	|   38	        |   15    |
+  | ANONYMOUS   |   20	|  966          |   17    |
+  | ANONYMOUS   |   23  |    2          |   20    |
+  | ANONYMOUS   |   24  |    2          |   20    |
+  | ANONYMOUS   |   25  |    2          |   15    |
+  | ANONYMOUS   |   27  |   46          |   20    |
+  | ANONYMOUS   |   28  |    3          |   20    |
+  | - 	        |   30  |    2          |    0    |
+  | - 	        |   31  |    2          |    2    |
+  -------------------------------------------------
+
+
+
+
+---------------------- ------------
+| View Session CURSORS Cache      |
+-----------------------------------
+You can also see directly what is in the session cursor cache by querying v$open_cursor. v$open_cursor lists session cached cursors by SID, and includes the first few characters of the statement and the sql_id, so you can actually tell what the cursors are for.
+
+SELECT 
+   c.user_name 
+   , c.sid 
+   , sql.sql_text
+FROM 
+   v$open_cursor c 
+   , v$sql sql
+WHERE 
+   c.sql_id=sql.sql_id  -- for 9i and earlier use: c.address=sql.address
+AND 
+   c.sid=&sid   -- 18 for example
+;
+
+Example response:
+=================
+
+     -----------------------------------------------------------------------------------
+     | USER_NAME       | SID      | SQL_TEXT                                           |
+     -----------------------------------------------------------------------------------
+     | SYS             | 18       | SELECT metric_name, value from V$SYSMETRIC         |
+     | SYS             | 18       | SELECT metric_name, value from V$SYSMETRIC         |
+     | SYS             | 18       | SELECT * FROM DBA_USERS                            |
+     | SYS             | 18       | SELECT SUM(bytes) FROM SYS.DBA_DATA_FILES          |
+     | SYS             | 18       | SELECT name, value FROM V$SYSSTAT                  |
+     | SYS             | 18       | SELECT name, value FROM V$SYSSTAT                  |
+     | SYS             | 18       | SELECT COUNT(*) FROM V$SYSMETRIC                   |
+     | SYS             | 18       | SELECT COUNT(*) FROM V$SYSMETRIC                   |
+     | SYS             | 18       | SELECT COUNT(*) FROM DBA_USERS WHERE username = :1 |
+     | SYS             | 18       | SELECT COUNT(*) FROM DBA_USERS WHERE username = :1 |
+     -----------------------------------------------------------------------------------

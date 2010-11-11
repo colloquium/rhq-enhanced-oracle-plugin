@@ -6,7 +6,7 @@
 
 	<groupId>org.rhq</groupId>
 	<artifactId>rhq-oracle-plugin</artifactId>
-	<version>3.1.12</version>
+	<version>3.1.23</version>
 	<packaging>jar</packaging>
 
 	<name>RHQ Oracle Plugin</name>

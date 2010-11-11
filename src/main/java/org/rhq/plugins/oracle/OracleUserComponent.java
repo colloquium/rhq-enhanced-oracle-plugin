@@ -21,27 +21,47 @@ package org.rhq.plugins.oracle;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.rhq.core.domain.configuration.Configuration;
+import org.rhq.core.domain.configuration.PropertyList;
+import org.rhq.core.domain.configuration.PropertyMap;
+import org.rhq.core.domain.configuration.PropertySimple;
 import org.rhq.core.domain.measurement.AvailabilityType;
 import org.rhq.core.domain.measurement.MeasurementDataNumeric;
 import org.rhq.core.domain.measurement.MeasurementReport;
 import org.rhq.core.domain.measurement.MeasurementScheduleRequest;
+import org.rhq.core.pluginapi.inventory.CreateChildResourceFacet;
+import org.rhq.core.pluginapi.inventory.CreateResourceReport;
 import org.rhq.core.pluginapi.measurement.MeasurementFacet;
+import org.rhq.core.pluginapi.operation.OperationFacet;
+import org.rhq.core.pluginapi.operation.OperationResult;
 import org.rhq.core.util.jdbc.JDBCUtil;
 import org.rhq.plugins.database.AbstractDatabaseComponent;
+import org.rhq.plugins.database.DatabaseComponent;
 import org.rhq.plugins.database.DatabaseQueryUtility;
 
 /**
  * @author Greg Hinkle
  */
-public class OracleUserComponent extends AbstractDatabaseComponent implements MeasurementFacet {
-    public AvailabilityType getAvailability() {
+public class OracleUserComponent extends AbstractDatabaseComponent<DatabaseComponent> implements MeasurementFacet {
+    private static final Log log = LogFactory.getLog(OracleUserComponent.class);
+	private String userName;
+	
+	
+	public AvailabilityType getAvailability() {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
+        
+        userName = this.resourceContext.getResourceKey();
+
         try {
             statement = getConnection().prepareStatement("SELECT COUNT(*) FROM DBA_USERS WHERE username = ?");
-            statement.setString(1, this.resourceContext.getResourceKey());
+            statement.setString(1, userName);
             resultSet = statement.executeQuery();
             if (resultSet.next() && (resultSet.getInt(1) == 1)) {
                 return AvailabilityType.UP;
@@ -68,4 +88,5 @@ public class OracleUserComponent extends AbstractDatabaseComponent implements Me
             }
         }
     }
+    
 }

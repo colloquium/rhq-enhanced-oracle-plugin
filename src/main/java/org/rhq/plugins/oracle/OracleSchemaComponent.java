@@ -20,12 +20,13 @@ import org.rhq.core.pluginapi.operation.OperationFacet;
 import org.rhq.core.pluginapi.operation.OperationResult;
 import org.rhq.core.util.jdbc.JDBCUtil;
 import org.rhq.plugins.database.AbstractDatabaseComponent;
+import org.rhq.plugins.database.DatabaseComponent;
 
 /**
  * @author isaac
  * 
  */
-public class OracleSchemaComponent extends AbstractDatabaseComponent
+public class OracleSchemaComponent extends AbstractDatabaseComponent<DatabaseComponent>
 		implements MeasurementFacet, OperationFacet {
     private static final String SQL_QUERY_AVAILABILITY = "SELECT owner FROM dba_tables WHERE owner = ?";
 	

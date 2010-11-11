@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<plugin name="Oracle" displayName="Oracle Database" package="org.rhq.plugins.oracle"
-	pluginLifecycleListener="OraclePluginLifecycleListener" ampsVersion="1.0"
-	description="Basic monitoring for Oracle RDBMS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns="urn:xmlns:rhq-plugin" xmlns:c="urn:xmlns:rhq-configuration">
+<plugin 
+    name="Oracle" 
+    displayName="Oracle Database" 
+    package="org.rhq.plugins.oracle"
+	pluginLifecycleListener="OraclePluginLifecycleListener" 
+	ampsVersion="1.0"
+	description="Basic monitoring for Oracle RDBMS" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="urn:xmlns:rhq-plugin" 
+	xmlns:c="urn:xmlns:rhq-configuration">
 
 	<depends plugin="Database" useClasses="true" />
 
-	<server name="Oracle Server" discovery="OracleDiscoveryComponent"
-		class="OracleServerComponent" supportsManualAdd="true" description="Oracle Server">
+	<server name="Oracle Server" 
+	    discovery="OracleDiscoveryComponent"
+		class="OracleServerComponent" 
+		supportsManualAdd="true" 
+		description="Oracle Server">
 
 		<!--
 			Properties are connection/lookup configurations. They are values that
@@ -34,8 +43,70 @@
 				type="password" displayName="role password"
 				description="the password for the database role being used to connect" />
 		</plugin-configuration>
-
 		<process-scan name="Oracle" query="process|basename|match=^ORACLE.*" />
+
+
+
+		<operation name="listOpenCursorsBySession" 
+            description="List the current open cursors for each active session">
+            <results>
+               <c:list-property name="openCursorList">
+                   <c:map-property name="openCursors">
+                       <c:simple-property name="sid"/>
+                       <c:simple-property name="userName"/>
+                       <c:simple-property name="serialNum"/>
+                       <c:simple-property name="numCursors"/>
+                   </c:map-property>
+                </c:list-property>
+            </results>
+        </operation>
+
+        <operation name="listOpenCursorsByUserByMachine" 
+            description="List the current open cursors for each User grouped by the connecting server">
+            <results>
+                <c:list-property name="openCursorByUserList">
+                    <c:map-property name="openCursorsByUser">
+                        <c:simple-property name="userName"/>
+                        <c:simple-property name="connectingServer"/>
+                        <c:simple-property name="maxCursors"/>
+                        <c:simple-property name="avgCursors"/>
+                        <c:simple-property name="numCursors"/>
+                    </c:map-property>
+                </c:list-property>
+            </results>
+        </operation>
+
+        <operation name="listCachedCursorsBySession" 
+            description="List the cached cursors for each active user's session">
+            <results>
+                <c:list-property name="cachedCursorByUserList">
+                    <c:map-property name="cachedCursorsByUser">
+                        <c:simple-property name="userName"/>
+                        <c:simple-property name="sid"/>
+                        <c:simple-property name="serialNum"/>
+                        <c:simple-property name="numCursors"/>
+                    </c:map-property>
+                </c:list-property>
+            </results>
+        </operation>
+
+        <operation name="viewSessionCursorsCache" 
+            description="View the session cached cursors by Session ID and the first few characters of the SQL statement">
+            <parameters>
+                  <c:simple-property name="sid" description="Session ID"/>
+            </parameters>
+            <results>
+                <c:list-property name="sessionCursorCacheList">
+                    <c:map-property name="cachedCursorsBySession">
+                        <c:simple-property name="userName"/>
+                        <c:simple-property name="sid"/>
+                        <c:simple-property name="sqlText"/>
+                    </c:map-property>
+                </c:list-property>
+            </results>
+        </operation>
+
+
 			<!-- Oracle Traits -->
 			<metric property="open_cursors" 
 			    displayName="Maximum Open Cursors"
@@ -561,6 +632,8 @@
 		<metric property="OTC commit optimization hits" />
 		<metric property="OTC commit optimization failure - setup" />
 
+
+
 		<service name="Oracle User"
 			discovery="org.rhq.plugins.database.CustomTableRowDiscoveryComponent"
 			class="org.rhq.plugins.oracle.OracleUserComponent">
@@ -578,20 +651,43 @@
 
 		</service>
 
+        <service name="Oracle Schemas"
+			discovery="org.rhq.plugins.database.CustomTableRowDiscoveryComponent"
+			class="org.rhq.plugins.oracle.OracleSchemaComponent">
+
+		    <plugin-configuration>
+				<c:simple-property name="table" default="dba_tables" />
+				<c:simple-property name="metricQuery"
+					default="SELECT DISTINCT owner FROM dba_tables" />
+				<c:simple-property name="keyColumn" default="owner" />
+				<c:simple-property name="name" default="{key}" />
+				<c:simple-property name="description" default="Oracle Schemas" />
+			</plugin-configuration>
+			
+
+			
+        </service>
+
 		<service name="Oracle Detailed Statistics"
 			discovery="org.rhq.plugins.database.CustomTableDiscoveryComponent"
 			class="org.rhq.plugins.database.CustomTableComponent">
 
 			<plugin-configuration>
-				<c:simple-property name="table" default="V$SYSMETRIC" />
-				<c:simple-property name="metricQuery"
+				<c:simple-property 
+				    name="table" 
+				    default="V$SYSMETRIC" />
+				<c:simple-property 
+				    name="metricQuery"
 					default="SELECT metric_name, value from V$SYSMETRIC" />
-				<c:simple-property name="name"
+				<c:simple-property 
+				    name="name"
 					default="Oracle 10g Advanced Statistics" />
-				<c:simple-property name="description"
+				<c:simple-property 
+				    name="description"
 					default="Detailed Oracle 10g Statistics" />
 			</plugin-configuration>
-
+			
+			
 			<!-- Oracle Traits -->
 			<metric property="open_cursors" 
 			    displayName="Maximum Open Cursors"
@@ -945,38 +1041,9 @@
 			<metric property="Executions Per Sec" />
 			<metric property="Txns Per Logon" />
 			<metric property="Database Time Per Sec" />
+			
 		</service>
         
-        <service name="Oracle Schemas"
-			discovery="org.rhq.plugins.database.CustomTableRowDiscoveryComponent"
-			class="org.rhq.plugins.oracle.OracleSchemaComponent">
-
-		    <plugin-configuration>
-				<c:simple-property name="table" default="dba_tables" />
-				<c:simple-property name="metricQuery"
-					default="SELECT DISTINCT owner FROM dba_tables" />
-				<c:simple-property name="keyColumn" default="owner" />
-				<c:simple-property name="name" default="{key}" />
-				<c:simple-property name="description" default="Oracle Schemas" />
-			</plugin-configuration>
-			
-          <operation name="invokeSql" description="Execute arbitrary SQL">
-              <parameters>
-                  <c:simple-property name="sql"/>
-                  <c:simple-property name="type" default="query">
-                      <c:property-options>
-                          <c:option value="query" name="query"/>
-                          <c:option value="update" name="update"/>
-
-                      </c:property-options>
-                  </c:simple-property>
-              </parameters>
-              <results>
-                  <c:simple-property name="result"/>
-                  <c:simple-property name="contents"/>
-              </results>
-          </operation>
-        </service>
         
 	</server>
 
