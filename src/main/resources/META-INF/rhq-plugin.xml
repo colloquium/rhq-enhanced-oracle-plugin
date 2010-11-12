@@ -6,6 +6,7 @@
     package="org.rhq.plugins.oracle"
 	pluginLifecycleListener="OraclePluginLifecycleListener" 
 	ampsVersion="1.0"
+	version="3.1.30"
 	description="Basic monitoring for Oracle RDBMS" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns="urn:xmlns:rhq-plugin" 
@@ -49,6 +50,22 @@
 
 		<operation name="listOpenCursorsBySession" 
             description="List the current open cursors for each active session">
+            <parameters>
+                  <c:simple-property name="sortBy" description="Display results sorted by the selected column" default="numCursors">
+                      <c:property-options>
+                          <c:option value="sid" name="sid"/>
+                          <c:option value="userName" name="userName"/>
+                          <c:option value="serialNum" name="serialNum"/>
+                          <c:option value="numCursors" name="numCursors"/>
+                      </c:property-options>
+                  </c:simple-property>
+                  <c:simple-property name="sortOrder" default="ASC">
+                  		<c:property-options>
+                  			<c:option value="ASC" name="ASC" />
+                  			<c:option value="DESC" name="DESC" />
+                  		</c:property-options>
+                  </c:simple-property>
+            </parameters>
             <results>
                <c:list-property name="openCursorList">
                    <c:map-property name="openCursors">
@@ -78,6 +95,22 @@
 
         <operation name="listCachedCursorsBySession" 
             description="List the cached cursors for each active user's session">
+            <parameters>
+                  <c:simple-property name="sortBy" description="Display results sorted by the selected column" default="numCursors">
+                      <c:property-options>
+                          <c:option value="sid" name="sid"/>
+                          <c:option value="userName" name="userName"/>
+                          <c:option value="serialNum" name="serialNum"/>
+                          <c:option value="numCursors" name="numCursors"/>
+                      </c:property-options>
+                  </c:simple-property>
+                  <c:simple-property name="sortOrder" default="ASC">
+                  		<c:property-options>
+                  			<c:option value="ASC" name="ASC" />
+                  			<c:option value="DESC" name="DESC" />
+                  		</c:property-options>
+                  </c:simple-property>
+            </parameters>
             <results>
                 <c:list-property name="cachedCursorByUserList">
                     <c:map-property name="cachedCursorsByUser">

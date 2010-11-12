@@ -6,14 +6,14 @@
 
 	<groupId>org.rhq</groupId>
 	<artifactId>rhq-oracle-plugin</artifactId>
-	<version>3.1.23</version>
+	<version>3.1.30</version>
 	<packaging>jar</packaging>
 
 	<name>RHQ Oracle Plugin</name>
 	<description>A plugin for managing Oracle Database Servers</description>
 
 	<properties>
-		<rhq.version>3.0.0.GA</rhq.version>
+		<rhq.version>3.0.0</rhq.version>
 	</properties>
 
 	<dependencies>

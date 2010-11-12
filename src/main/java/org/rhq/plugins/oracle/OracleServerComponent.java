@@ -24,6 +24,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -45,6 +46,8 @@ import org.rhq.core.pluginapi.operation.OperationFacet;
 import org.rhq.core.pluginapi.operation.OperationResult;
 import org.rhq.plugins.database.DatabaseComponent;
 import org.rhq.plugins.database.DatabaseQueryUtility;
+
+import antlr.collections.List;
 
 /**
  * @author Greg Hinkle
@@ -304,22 +307,45 @@ public class OracleServerComponent implements DatabaseComponent,
             Statement stmt = null;
             ResultSet rs = null;
             try {
-                stmt = getConnection().createStatement();
-                rs = stmt.executeQuery(SQL_OPERATION_OPEN_CURSORS_BY_SESSION);
+            	String sortBy = config.getSimple("sortBy").getStringValue();
+            	if (sortBy.equalsIgnoreCase("serialNum")) {
+            		sortBy = "serial#";
+            	} else if (sortBy.equalsIgnoreCase("numCursors")) {
+            		sortBy = "value";
+            	}
+            	String sortOrder = config.getSimple("sortOrder").getStringValue();
+            	//Need to reverse the logic here because the property maps will reverse the stack
+            	if (sortOrder.equalsIgnoreCase("ASC")) {
+            		sortOrder = "DESC";
+            	} else {
+            		sortOrder = "ASC";
+            	}
+            	
+            	stmt = getConnection().createStatement();
+                rs = stmt.executeQuery(
+                		SQL_OPERATION_OPEN_CURSORS_BY_SESSION 
+                		+ " ORDER BY " 
+                		+ sortBy 
+                		+ " " 
+                		+ sortOrder
+                );
 
                 PropertyList cursorList = new PropertyList("openCursorList");
-                while (rs.next()) {
-                    PropertyMap pm = new PropertyMap("process");
-                    pm.put(new PropertySimple("sid", rs.getInt("sid")));
-                    pm.put(new PropertySimple("userName", rs.getString("username")));
-                    pm.put(new PropertySimple("serialNum", rs.getString("serial#")));
-                    pm.put(new PropertySimple("numCursors", rs.getString("value")));
-
-                    cursorList.add(pm);
+                synchronized(this){
+	                while (rs.next()) {
+	                    PropertyMap pm = new PropertyMap("process");
+	                    pm.put(new PropertySimple("sid", rs.getInt("sid")));
+	                    pm.put(new PropertySimple("userName", rs.getString("username")));
+	                    pm.put(new PropertySimple("serialNum", rs.getString("serial#")));
+	                    pm.put(new PropertySimple("numCursors", rs.getString("value")));
+	
+	                    cursorList.add(pm);
+	                }
                 }
-
+                
                 OperationResult result = new OperationResult();
                 result.getComplexResults().put(cursorList);
+                
                 return result;
             } finally {
                 if (rs != null) {
@@ -365,18 +391,40 @@ public class OracleServerComponent implements DatabaseComponent,
             Statement stmt = null;
             ResultSet rs = null;
             try {
+            	String sortBy = config.getSimple("sortBy").getStringValue();
+            	if (sortBy.equalsIgnoreCase("serialNum")) {
+            		sortBy = "serial#";
+            	} else if (sortBy.equalsIgnoreCase("numCursors")) {
+            		sortBy = "value";
+            	}
+            	String sortOrder = config.getSimple("sortOrder").getStringValue();
+            	//Need to reverse the logic here because the property maps will reverse the stack
+            	if (sortOrder.equalsIgnoreCase("ASC")) {
+            		sortOrder = "DESC";
+            	} else {
+            		sortOrder = "ASC";
+            	}
+            	
             	stmt = getConnection().createStatement();
-            	rs = stmt.executeQuery(SQL_OPERATION_CACHED_CURSORS_PER_SESSION);
+                rs = stmt.executeQuery(
+                		SQL_OPERATION_CACHED_CURSORS_PER_SESSION 
+                		+ " ORDER BY " 
+                		+ sortBy 
+                		+ " " 
+                		+ sortOrder
+                );
 
             	PropertyList cursorList = new PropertyList("cachedCursorByUserList");
-            	while (rs.next()) {
-            		PropertyMap pm = new PropertyMap("cachedCursorsByUser");
-                    pm.put(new PropertySimple("userName", rs.getString("username")));
-                    pm.put(new PropertySimple("sid", rs.getInt("sid")));
-                    pm.put(new PropertySimple("serialNum", rs.getString("serial#")));
-                    pm.put(new PropertySimple("numCursors", rs.getString("value")));
-
-            		cursorList.add(pm);
+            	synchronized(this){
+	            	while (rs.next()) {
+	            		PropertyMap pm = new PropertyMap("cachedCursorsByUser");
+	                    pm.put(new PropertySimple("userName", rs.getString("username")));
+	                    pm.put(new PropertySimple("sid", rs.getInt("sid")));
+	                    pm.put(new PropertySimple("serialNum", rs.getString("serial#")));
+	                    pm.put(new PropertySimple("numCursors", rs.getString("value")));
+	
+	            		cursorList.add(pm);
+	            	}
             	}
 
             	OperationResult result = new OperationResult();
@@ -399,7 +447,7 @@ public class OracleServerComponent implements DatabaseComponent,
                	stmt = getConnection().prepareStatement(SQL_OPERATION_VIEW_SESSSION_CURSORS_CACHE);
                	stmt.setString(1,sid);
                	rs = stmt.executeQuery();
-
+               	
                	PropertyList cursorList = new PropertyList("sessionCursorCacheList");
                	while (rs.next()) {
                	   PropertyMap pm = new PropertyMap("cachedCursorsBySession");
@@ -412,7 +460,7 @@ public class OracleServerComponent implements DatabaseComponent,
 
                	OperationResult result = new OperationResult();
                	result.getComplexResults().put(cursorList);
-               	return result;
+             	return result;
                } finally {
                	if (rs != null) {
                		rs.close();
